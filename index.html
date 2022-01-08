@@ -1,0 +1,84 @@
+<html>
+    <head>
+        <title>Timers</title>
+        <script>
+            class Timer {
+                constructor (name, onSecond) {
+                    this.name = name;
+                    this.onSecond = onSecond;
+                    this.seconds = 0;
+                    this.paused = false;
+                    this.interval = null;
+                    this.run();
+                }
+                
+                run () {
+                    this.paused = false;
+                    this.interval = setInterval(() => {
+                    this.seconds++;
+                    this.onSecond(this.seconds);
+                    }, 1000);
+                }
+                
+                pause () {
+                    this.paused = true;
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+            }
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                const nameInput = document.getElementById('newTimerName');
+                const timersContainer = document.getElementById('currentTimers');
+                const timerTemplate = document.getElementById('timerTemplate');
+                const timerCreate = document.getElementById('createTimer');
+
+                timerCreate.addEventListener('click', () => {
+                    const name = nameInput.value;
+                    nameInput.value = "";
+
+                    const timerElement = document.createElement('li');
+                    timerElement.class = 'timer';
+                    timerElement.innerHTML = timerTemplate.innerHTML.replace('${timerName}', name);
+                    
+                    const timeLabel = timerElement.querySelector('span.time');
+                    const timer = new Timer(name, (sec) => {
+                        timeLabel.textContent = sec;
+                    });
+                    
+                    console.log(timer);
+                    
+                    const resumeButton = timerElement.querySelector('button.resume');
+                    const pauseButton = timerElement.querySelector('button.pause');
+                    resumeButton.disabled = true;
+                    pauseButton.disabled = false;
+                    resumeButton.addEventListener('click', (e) => {
+                        timer.run();
+                        resumeButton.disabled = true;
+                        pauseButton.disabled = false;
+                    });
+                    pauseButton.addEventListener('click', (e) => {
+                        timer.pause();
+                        resumeButton.disabled = false;
+                        pauseButton.disabled = true;
+                    });
+                    
+                    timersContainer.prepend(timerElement);
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <input id="newTimerName"/>
+        <button id="createTimer">Create</button>
+
+        <ul id="currentTimers"></ul>
+
+        <template id="timerTemplate" class="timer">
+        <span class="name">${timerName}</span>
+        <span class="time">00h 00m 00s</span>
+        <button class="resume">Resume</button>
+        <button class="pause">Pause</button>
+        </template>
+    </body>
+</html>
