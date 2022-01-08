@@ -1,35 +1,94 @@
 <html>
     <head>
         <title>Timers</title>
+        <style type="text/css">
+            body {
+                background: #60d7e2;
+                font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+                font-size: 1.5em;
+                margin: 0;
+                color:#383430;
+            }
+            button, input {
+                font-size: inherit;
+            }
+            main {
+                max-width: 500px;
+                margin: 20px auto 0 auto;
+            }
+            ul#timers {
+                list-style: none;
+                padding: 0;
+            }
+        </style>
+    </head>
+    <body>
         <script>
             class Timer {
-                constructor (name, onSecond) {
+                constructor (name, onTick, onResume, onPause) {
                     this.name = name;
-                    this.onSecond = onSecond;
                     this.seconds = 0;
                     this.paused = false;
-                    this.interval = null;
-                    this.run();
+
+                    this.onTick = () => onTick(
+                        this.seconds/3600>>0,
+                        this.seconds%3600/60>>0,
+                        this.seconds%3600%60
+                    );
+                    this.onResume = onResume;
+                    this.onPause = onPause;
+
+                    Timer.list.forEach((timer) => {
+                        timer.pause();
+                    });
+                    Timer.list.push(this);
+
+                    this.resume();
+                    this.onTick();
                 }
+
+                static list = [];
+                static clock = setInterval(() => {
+                    Timer.list.forEach((timer) => timer.tick());
+                }, 1000);
                 
-                run () {
+                resume () {
                     this.paused = false;
-                    this.interval = setInterval(() => {
-                    this.seconds++;
-                    this.onSecond(this.seconds);
-                    }, 1000);
+                    this.onResume();
+                }
+
+                tick () {
+                    if (!this.paused) {
+                        this.seconds++;
+                        this.onTick();
+                    }
                 }
                 
                 pause () {
                     this.paused = true;
-                    clearInterval(this.interval);
-                    this.interval = null;
+                    this.onPause();
                 }
             }
-            
+        </script>
+
+        <main>
+            <input id="newTimerName"/>
+            <button id="createTimer">Create</button>
+
+            <ul id="timers"></ul>
+
+            <template id="timerTemplate" class="timer">
+                <span class="name">${timerName}</span>
+                <span class="time"></span>
+                <button class="resume" disabled>Resume</button>
+                <button class="pause" disabled>Pause</button>
+            </template>
+        </main>
+
+        <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const nameInput = document.getElementById('newTimerName');
-                const timersContainer = document.getElementById('currentTimers');
+                const timersContainer = document.getElementById('timers');
                 const timerTemplate = document.getElementById('timerTemplate');
                 const timerCreate = document.getElementById('createTimer');
 
@@ -40,20 +99,27 @@
                     const timerElement = document.createElement('li');
                     timerElement.class = 'timer';
                     timerElement.innerHTML = timerTemplate.innerHTML.replace('${timerName}', name);
-                    
                     const timeLabel = timerElement.querySelector('span.time');
-                    const timer = new Timer(name, (sec) => {
-                        timeLabel.textContent = sec;
-                    });
-                    
-                    console.log(timer);
-                    
                     const resumeButton = timerElement.querySelector('button.resume');
                     const pauseButton = timerElement.querySelector('button.pause');
-                    resumeButton.disabled = true;
-                    pauseButton.disabled = false;
+
+                    const timer = new Timer(
+                        name,
+                        (h, m, s) => {
+                            timeLabel.textContent = `${h}h ${m}m ${s}s`;
+                        },
+                        () => {
+                            resumeButton.disabled = true;
+                            pauseButton.disabled = false;
+                        },
+                        () => {
+                            resumeButton.disabled = false;
+                            pauseButton.disabled = true;
+                        }
+                    );
+                    
                     resumeButton.addEventListener('click', (e) => {
-                        timer.run();
+                        timer.resume();
                         resumeButton.disabled = true;
                         pauseButton.disabled = false;
                     });
@@ -67,18 +133,5 @@
                 });
             });
         </script>
-    </head>
-    <body>
-        <input id="newTimerName"/>
-        <button id="createTimer">Create</button>
-
-        <ul id="currentTimers"></ul>
-
-        <template id="timerTemplate" class="timer">
-        <span class="name">${timerName}</span>
-        <span class="time">00h 00m 00s</span>
-        <button class="resume">Resume</button>
-        <button class="pause">Pause</button>
-        </template>
     </body>
 </html>
