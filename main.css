@@ -1,0 +1,34 @@
+body {
+    background: #60d7e2;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-size: 1.5em;
+    margin: 0;
+    color:#383430;
+}
+button, input {
+    font-size: inherit;
+}
+main {
+    max-width: 500px;
+    margin: 20px auto 0 auto;
+}
+ul#timers {
+    list-style: none;
+    padding: 10px;
+    background: #d3ecee;
+    border: 3px solid #5e8b8f;
+}
+ul#timers>li {
+    border-left: 10px solid #e68dc1;
+    padding: 5px 0px 5px 10px;
+}
+ul#timers>li.paused {
+    background: yellow;
+}
+ul#timers>li:nth-child(even) {
+    border-left-color: #a6b1e2;
+}
+#errorMessage {
+    background: pink;
+    border: 1px solid red;
+}
