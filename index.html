@@ -26,44 +26,79 @@
                 border-left: 10px solid #e68dc1;
                 padding: 5px 0px 5px 10px;
             }
+            ul#timers>li.paused {
+                background: yellow;
+            }
             ul#timers>li:nth-child(even) {
                 border-left-color: #a6b1e2;
+            }
+            #errorMessage {
+                background: pink;
+                border: 1px solid red;
             }
         </style>
     </head>
     <body>
         <script>
+
+            class TimerError extends Error {
+                constructor(message) {
+                    super(message);
+                    this.name = 'TimerError';
+                }
+            }
+
             class Timer {
-                constructor (name, onTick, onResume, onPause) {
+                constructor ({
+                    name, onTick, onResumed, onPaused, onStopped
+                }) {
+                    if (!name) {
+                        throw new TimerError('Timer name required.');
+                    }
+
                     this.name = name;
                     this.seconds = 0;
-                    this.paused = false;
-
+                    this.paused = true;
                     this.onTick = () => onTick(
                         this.seconds/3600>>0,
                         this.seconds%3600/60>>0,
                         this.seconds%3600%60
                     );
-                    this.onResume = onResume;
-                    this.onPause = onPause;
+                    this.onResumed = onResumed;
+                    this.onPaused = onPaused;
+                    this.onStopped = onStopped;
 
-                    Timer.list.forEach((timer) => {
-                        timer.pause();
-                    });
-                    Timer.list.push(this);
-
-                    this.resume();
-                    this.onTick();
+                    this.start();
                 }
 
-                static list = [];
+                static pauseOnStart = true;
+                static timers = new Map();
                 static clock = setInterval(() => {
-                    Timer.list.forEach((timer) => timer.tick());
+                    for (let timer of Timer.timers.values()) {
+                        timer.tick();
+                    }
                 }, 1000);
+
+                start () {
+                    if(Timer.timers.has(this.name)) {
+                        throw new TimerError(`Timer with name ${this.name} already started.`);
+                    }
+                    if (Timer.pauseOnStart) {
+                        for (let timer of Timer.timers.values()) {
+                            timer.pause();
+                        }
+                    }
+                    Timer.timers.set(this.name, this);
+
+                    this.onTick();
+                    this.resume();
+                }
                 
                 resume () {
-                    this.paused = false;
-                    this.onResume();
+                    if (this.paused) {
+                        this.paused = false;
+                        this.onResumed();
+                    }
                 }
 
                 tick () {
@@ -74,13 +109,24 @@
                 }
                 
                 pause () {
-                    this.paused = true;
-                    this.onPause();
+                    if (!this.paused) {
+                        this.paused = true;
+                        this.onPaused();
+                    }
+                }
+
+                stop () {
+                    if (Timer.timers.has(this.name)) {
+                        Timer.timers.delete(this.name);
+                        this.onStopped();
+                    }
                 }
             }
         </script>
 
         <main>
+            <p id="errorMessage"></p>
+
             <input id="newTimerName"/>
             <button id="createTimer">Create</button>
 
@@ -89,8 +135,9 @@
             <template id="timerTemplate" class="timer">
                 <span class="name">${timerName}</span>
                 <span class="time"></span>
-                <button class="resume" disabled>Resume</button>
-                <button class="pause" disabled>Pause</button>
+                <button class="resume">Resume</button>
+                <button class="pause">Pause</button>
+                <button class="stop">Stop</button>
             </template>
         </main>
 
@@ -100,10 +147,21 @@
                 const timersContainer = document.getElementById('timers');
                 const timerTemplate = document.getElementById('timerTemplate');
                 const timerCreate = document.getElementById('createTimer');
+                const errorMessage = document.getElementById('errorMessage');
+
+                const clearErrorMessage = () => {
+                    errorMessage.textContent = '';
+                }
+                const showErrorMessage = (message) => {
+                    clearErrorMessage();
+                    errorMessage.textContent = message;
+                };
 
                 timerCreate.addEventListener('click', () => {
+                    clearErrorMessage();
+
                     const name = nameInput.value;
-                    nameInput.value = "";
+                    nameInput.value = '';
 
                     const timerElement = document.createElement('li');
                     timerElement.class = 'timer';
@@ -111,34 +169,42 @@
                     const timeLabel = timerElement.querySelector('span.time');
                     const resumeButton = timerElement.querySelector('button.resume');
                     const pauseButton = timerElement.querySelector('button.pause');
+                    const stopButton = timerElement.querySelector('button.stop');
 
-                    const timer = new Timer(
-                        name,
-                        (h, m, s) => {
-                            timeLabel.textContent = `${h}h ${m}m ${s}s`;
-                        },
-                        () => {
-                            resumeButton.disabled = true;
-                            pauseButton.disabled = false;
-                        },
-                        () => {
-                            resumeButton.disabled = false;
-                            pauseButton.disabled = true;
-                        }
-                    );
-                    
-                    resumeButton.addEventListener('click', (e) => {
-                        timer.resume();
-                        resumeButton.disabled = true;
-                        pauseButton.disabled = false;
-                    });
-                    pauseButton.addEventListener('click', (e) => {
-                        timer.pause();
-                        resumeButton.disabled = false;
-                        pauseButton.disabled = true;
-                    });
-                    
                     timersContainer.prepend(timerElement);
+
+                    try {
+                        const timer = new Timer({
+                            name,
+                            onTick: (h, m, s) => {
+                                timeLabel.textContent = `${h}h ${m}m ${s}s`;
+                            },
+                            onResumed: () => timerElement.classList.remove('paused'),
+                            onPaused: () => timerElement.classList.add('paused'),
+                            onStopped: () => timerElement.remove()
+                        });
+                        
+                        resumeButton.addEventListener('click', (e) => {
+                            clearErrorMessage();
+                            timer.resume();
+                        });
+                        pauseButton.addEventListener('click', (e) => {
+                            clearErrorMessage();
+                            timer.pause();
+                        });
+                        stopButton.addEventListener('click', (e) => {
+                            clearErrorMessage();
+                            timer.stop();
+                        });
+
+                    } catch (error) {
+                        if (error instanceof TimerError) {
+                            showErrorMessage(error.message);
+                            timerElement.remove();
+                        } else {
+                            throw error;
+                        }
+                    }
                 });
             });
         </script>
