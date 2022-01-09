@@ -1,6 +1,7 @@
 <html>
     <head>
         <title>Timers</title>
+        <script src="./timerStorage.js"></script>
         <script src="./timer.js"></script>
         <script src="./main.js"></script>
         <link rel="stylesheet" href="main.css">
@@ -15,15 +16,27 @@
                 <input id="pauseOthers" type="checkbox" checked/>
                 <span>Pause others</span>
             </label>
+            <button id="pauseAll">Pause All</button>
+            <button id="stopAll">Stop All</button>
 
             <ul id="timers"></ul>
 
-            <template id="timerTemplate" class="timer">
+            <ul id="logs"></ul>
+
+            <template id="timerTemplate">
                 <span class="name">${timerName}</span>
                 <span class="time"></span>
                 <button class="resume">Resume</button>
                 <button class="pause">Pause</button>
                 <button class="stop">Stop</button>
+            </template>
+
+            <button id="clearLogs">Clear logs</button>
+            <template id="logTemplate">
+                <span class="startDate">${startDate}</span>
+                <span class="stopDate">${stopDate}</span>
+                <span class="name">${name}</span>
+                <span class="time">${time}</span>
             </template>
         </main>
     </body>

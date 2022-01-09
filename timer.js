@@ -4,72 +4,32 @@ class TimerError extends Error {
         this.name = 'TimerError';
     }
 }
-
-const TimerConfigs = {
-    PAUSE_OTHERS: 'pauseOthers'
-};
-
-class TimerStorage {
-    static store (timer) {
-        localStorage.setItem(`timer.${timer.id}`, JSON.stringify({
-            name: timer.name,
-            seconds: timer.seconds,
-            paused: timer.paused,
-            date: (new Date()).getTime()
-        }));
-    }
-
-    static discard (timer) {
-        localStorage.removeItem(`timer.${timer.name}`);
-    }
-
-    static restore (restoreHandler) {
-        for (let i = 0; i < localStorage.length; i++){
-            const key = localStorage.key(i);
-            if (key.startsWith('timer.')) {
-                let { name, seconds, paused, date } = JSON.parse(localStorage.getItem(key));
-
-                if (!paused) {
-                    const now = (new Date()).getTime();
-                    seconds += Math.round((now - date)/1000);
-                };
-
-                restoreHandler(name, paused, seconds);
-            }
-        }
-    }
-    
-    static getConfig(name) {
-        return JSON.parse(localStorage.getItem(`config.${name}`));
-    }
-
-    static setConfig(name, value) {
-        return localStorage.setItem(`config.${name}`, value);
-    }
-}
-
 class Timer {
     constructor({
-        name, seconds = 0, paused = false,
+        name, startDate = new Date(), seconds = 0, paused = false,
         onTick, onRunning, onPaused, onStopped
     }) {
         if (!name) throw new TimerError('Timer name required.');
 
-        this.id = name;
+        this.startDate = startDate || new Date();
         this.name = name;
         this.seconds = seconds;
         this.paused = paused;
 
-        this.onTick = () => onTick(
-            this.seconds / 3600 >> 0,
-            this.seconds % 3600 / 60 >> 0,
-            this.seconds % 3600 % 60
-        );
+        this.onTick = onTick;
         this.onRunning = onRunning;
         this.onPaused = onPaused;
         this.onStopped = onStopped;
 
         this.init();
+    }
+
+    get id () {
+        return `${this.startDate.getTime()}-${this.name}`;
+    }
+
+    get time () {
+        return `${this.seconds / 3600 >> 0}h ${this.seconds % 3600 / 60 >> 0}m ${this.seconds % 3600 % 60}s`
     }
 
     static timers = new Map();
@@ -78,19 +38,26 @@ class Timer {
             timer.tick();
         }
     }, 1000);
+
     static pauseAll () {
         for (let timer of Timer.timers.values()) {
             timer.pause();
         }
     };
 
+    static stopAll () {
+        for (let timer of Timer.timers.values()) {
+            timer.stop();
+        }
+    };
+
     init() {
-        if (Timer.timers.has(this.name)) {
-            throw new TimerError(`Timer with name ${this.name} already started.`);
+        if (Timer.timers.has(this.id)) {
+            throw new TimerError(`Same timer already exists.`);
         }
         Timer.timers.set(this.id, this);
 
-        this.onTick();
+        this.onTick(this.time);
         if (!this.paused) {
             this.run(true);
         }
@@ -108,7 +75,7 @@ class Timer {
     tick() {
         if (!this.paused) {
             this.seconds++;
-            this.onTick();
+            this.onTick(this.time);
         }
     }
 

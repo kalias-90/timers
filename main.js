@@ -2,9 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('newTimerName');
     const timersContainer = document.getElementById('timers');
     const timerTemplate = document.getElementById('timerTemplate');
-    const timerCreate = document.getElementById('createTimer');
     const errorMessage = document.getElementById('errorMessage');
     const pauseOthersFlag = document.getElementById('pauseOthers');
+    const timerCreate = document.getElementById('createTimer');
+    const pauseAllButton = document.getElementById('pauseAll');
+    const stopAllButton = document.getElementById('stopAll');
+    const logsContainer = document.getElementById('logs');
+    const logTemplate = document.getElementById('logTemplate');
+    const clearLogsButton = document.getElementById('clearLogs');
 
     const clearErrorMessage = () => {
         errorMessage.textContent = '';
@@ -14,9 +19,21 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage.textContent = message;
     };
 
-    const createTimer = (name, paused = false, seconds = 0) => {
+    const refreshLogs = () => {
+        logsContainer.innerHTML = '';
+        for (let { startDate, stopDate, name, time } of TimerStorage.getLogs()) {
+            const logElement = document.createElement('li');
+            logElement.innerHTML = logTemplate.innerHTML
+                .replace('${startDate}', startDate.toLocaleString())
+                .replace('${stopDate}', stopDate.toLocaleString())
+                .replace('${name}', name)
+                .replace('${time}', time);
+            logsContainer.append(logElement);
+        }
+    };
+
+    const createTimer = (name, startDate, paused = false, seconds = 0) => {
         const timerElement = document.createElement('li');
-        timerElement.classList.add('timer');
         if (paused) timerElement.classList.add('paused');
         timerElement.innerHTML = timerTemplate.innerHTML.replace('${timerName}', name);
 
@@ -30,10 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const timer = new Timer({
                 name,
+                startDate,
                 paused,
                 seconds,
-                onTick: (h, m, s) => {
-                    timeLabel.textContent = `${h}h ${m}m ${s}s`;
+                onTick: (time) => {
+                    timeLabel.textContent = time;
                 },
                 onRunning: () => timerElement.classList.remove('paused'),
                 onPaused: () => timerElement.classList.add('paused'),
@@ -51,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stopButton.addEventListener('click', (e) => {
                 clearErrorMessage();
                 timer.stop();
+                refreshLogs();
             });
 
         } catch (error) {
@@ -64,11 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     TimerStorage.restore(createTimer);
+    refreshLogs();
 
-    pauseOthersFlag.checked = TimerStorage.getConfig(TimerConfigs.PAUSE_OTHERS) !== false;
+    pauseOthersFlag.checked = TimerStorage.getConfig(TimerStorage.configNames.PAUSE_OTHERS) !== false;
 
     pauseOthersFlag.addEventListener('change', () => {
-        TimerStorage.setConfig(TimerConfigs.PAUSE_OTHERS, pauseOthersFlag.checked);
+        TimerStorage.setConfig(TimerStorage.configNames.PAUSE_OTHERS, pauseOthersFlag.checked);
     });
     timerCreate.addEventListener('click', () => {
         clearErrorMessage();
@@ -81,4 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         createTimer(name);
     });
+    pauseAllButton.addEventListener('click', () => {
+        Timer.pauseAll();
+    });
+    stopAllButton.addEventListener('click', () => {
+        Timer.stopAll();
+        refreshLogs();
+    });
+    clearLogsButton.addEventListener('click', () => {
+        TimerStorage.clearLogs();
+        refreshLogs();
+    });
+
 });
