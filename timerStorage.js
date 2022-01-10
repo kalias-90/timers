@@ -25,47 +25,36 @@ class TimerStorage {
         }));
     }
 
-    static restore (restoreHandler) {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('timer.')) {
-                let { name, seconds, paused, startDate, lastDate } = JSON.parse(localStorage.getItem(key));
+    static getStoredTimers () {
+        const storedTimerKeys = Object.keys(localStorage).filter((k) => k.startsWith('timer.'));
+        return storedTimerKeys.map((key) => {
+            const storedTimer = JSON.parse(localStorage.getItem(key));
 
-                if (!paused) {
-                    const now = (new Date());
-                    seconds += Math.round((now.getTime() - lastDate)/1000);
-                };
+            if (!storedTimer.paused) {
+                const now = new Date();
+                storedTimer.seconds += Math.round(((new Date()).getTime() - storedTimer.lastDate)/1000);
+            };
 
-                restoreHandler(name, new Date(startDate), paused, seconds);
-            }
-        }
+            storedTimer.startDate = new Date(storedTimer.startDate);
+            storedTimer.lastDate = new Date(storedTimer.lastDate);
+
+            return storedTimer;
+        }).sort((a, b) => a.startDate - b.startDate);
     }
 
     static getLogs() {
-        const result = new Set();
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('log.')) {
-                let { name, time, startDate, stopDate } = JSON.parse(localStorage.getItem(key));
-
-                result.add({
-                    startDate: new Date(startDate),
-                    stopDate: new Date(stopDate),
-                    name,
-                    time
-                });
-            }
-        }
-        return Array.from(result);
+        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith('log.'));
+        return logKeys.map((key) => {
+            const log = JSON.parse(localStorage.getItem(key));
+            log.startDate = new Date(log.startDate);
+            log.stopDate = new Date(log.stopDate);
+            return log;
+        }).sort((a, b) => a.stopDate - b.stopDate);
     }
 
     static clearLogs() {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('log.')) {
-                localStorage.removeItem(key);
-            }
-        }
+        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith('log.'));
+        logKeys.forEach((key) => localStorage.removeItem(key));
     }
     
     static getConfig(name) {

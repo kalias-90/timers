@@ -21,15 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshLogs = () => {
         logsContainer.innerHTML = '';
-        for (let { startDate, stopDate, name, time } of TimerStorage.getLogs()) {
+        logs = TimerStorage.getLogs();
+        logs.forEach(({ startDate, stopDate, name, time }) => {
             const logElement = document.createElement('li');
             logElement.innerHTML = logTemplate.innerHTML
                 .replace('${startDate}', startDate.toLocaleString())
                 .replace('${stopDate}', stopDate.toLocaleString())
                 .replace('${name}', name)
                 .replace('${time}', time);
-            logsContainer.append(logElement);
-        }
+            logsContainer.prepend(logElement);
+        });
     };
 
     const createTimer = (name, startDate, paused = false, seconds = 0) => {
@@ -82,7 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    TimerStorage.restore(createTimer);
+    const storedTimers = TimerStorage.getStoredTimers();
+    storedTimers.forEach((st) => createTimer(st.name, st.startDate, st.paused, st.seconds));
+
     refreshLogs();
 
     pauseOthersFlag.checked = TimerStorage.getConfig(TimerStorage.configNames.PAUSE_OTHERS) !== false;
