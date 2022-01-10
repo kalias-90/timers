@@ -1,3 +1,7 @@
+const timeToString = (time = 0) => {
+    return `${time / 3600 >> 0}h ${time % 3600 / 60 >> 0}m ${time % 3600 % 60}s`
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('newTimerName');
     const timersContainer = document.getElementById('timers');
@@ -28,12 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .replace('${startDate}', startDate.toLocaleString())
                 .replace('${stopDate}', stopDate.toLocaleString())
                 .replace('${name}', name)
-                .replace('${time}', time);
+                .replace('${time}', timeToString(time));
             logsContainer.prepend(logElement);
         });
     };
 
-    const createTimer = (name, startDate, paused = false, seconds = 0) => {
+    const createTimer = (name, startDate, lastRunDate, pastTime, paused = false) => {
         const timerElement = document.createElement('li');
         if (paused) timerElement.classList.add('paused');
         timerElement.innerHTML = timerTemplate.innerHTML.replace('${timerName}', name);
@@ -43,16 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const pauseButton = timerElement.querySelector('button.pause');
         const stopButton = timerElement.querySelector('button.stop');
 
+        timeLabel.textContent = timeToString(pastTime);
+
         timersContainer.prepend(timerElement);
 
         try {
             const timer = new Timer({
                 name,
                 startDate,
+                lastRunDate,
                 paused,
-                seconds,
+                pastTime,
                 onTick: (time) => {
-                    timeLabel.textContent = time;
+                    timeLabel.textContent = timeToString(time);
                 },
                 onRunning: () => timerElement.classList.remove('paused'),
                 onPaused: () => timerElement.classList.add('paused'),
@@ -84,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const storedTimers = TimerStorage.getStoredTimers();
-    storedTimers.forEach((st) => createTimer(st.name, st.startDate, st.paused, st.seconds));
+    storedTimers.forEach((st) => createTimer(st.name, st.startDate, st.lastRunDate, st.pastTime, st.paused));
 
     refreshLogs();
 

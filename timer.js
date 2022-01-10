@@ -1,3 +1,4 @@
+const CLOCK_ACCURACY = 1000;
 class TimerError extends Error {
     constructor(message) {
         super(message);
@@ -5,15 +6,39 @@ class TimerError extends Error {
     }
 }
 class Timer {
+    static timers = new Map();
+    static clock = setInterval(() => {
+        for (let timer of Timer.timers.values()) {
+            timer.onTick(timer.time);
+        }
+    }, CLOCK_ACCURACY);
+
+    static pauseAll () {
+        for (let timer of Timer.timers.values()) {
+            timer.pause();
+        }
+    };
+
+    static stopAll () {
+        for (let timer of Timer.timers.values()) {
+            timer.stop();
+        }
+    };
+
     constructor({
-        name, startDate = new Date(), seconds = 0, paused = false,
+        name,
+        startDate = new Date(),
+        lastRunDate = null,
+        pastTime = 0,
+        paused = false,
         onTick, onRunning, onPaused, onStopped
     }) {
         if (!name) throw new TimerError('Timer name required.');
 
-        this.startDate = startDate || new Date();
+        this.startDate = startDate;
+        this.lastRunDate = lastRunDate;
         this.name = name;
-        this.seconds = seconds;
+        this.pastTime = pastTime;
         this.paused = paused;
 
         this.onTick = onTick;
@@ -29,27 +54,12 @@ class Timer {
     }
 
     get time () {
-        return `${this.seconds / 3600 >> 0}h ${this.seconds % 3600 / 60 >> 0}m ${this.seconds % 3600 % 60}s`
+        let lastIntrerval = 0;
+        if (!this.paused) {
+            lastIntrerval = Math.round(((new Date()) - this.lastRunDate)/1000);
+        }
+        return this.pastTime + lastIntrerval;
     }
-
-    static timers = new Map();
-    static clock = setInterval(() => {
-        for (let timer of Timer.timers.values()) {
-            timer.tick();
-        }
-    }, 1000);
-
-    static pauseAll () {
-        for (let timer of Timer.timers.values()) {
-            timer.pause();
-        }
-    };
-
-    static stopAll () {
-        for (let timer of Timer.timers.values()) {
-            timer.stop();
-        }
-    };
 
     init() {
         if (Timer.timers.has(this.id)) {
@@ -57,43 +67,39 @@ class Timer {
         }
         Timer.timers.set(this.id, this);
 
-        this.onTick(this.time);
         if (!this.paused) {
-            this.run(true);
+            if (!this.lastRunDate) {
+                this.lastRunDate = new Date();
+            }
+            TimerStorage.storeTimer(this);
         }
     }
 
-    run(force) {
-        if (this.paused || force) {
+    run() {
+        if (this.paused) {
+            this.lastRunDate = new Date();
             this.paused = false;
-            TimerStorage.store(this);
-
-            this.onRunning();
+            TimerStorage.storeTimer(this);
         }
-    }
-
-    tick() {
-        if (!this.paused) {
-            this.seconds++;
-            this.onTick(this.time);
-        }
+        this.onRunning();
     }
 
     pause() {
         if (!this.paused) {
+            this.pastTime = this.time;
+            this.lastRunDate = null;
             this.paused = true;
-            TimerStorage.store(this);
-
-            this.onPaused();
+            TimerStorage.storeTimer(this);
         }
+        this.onPaused();
     }
 
     stop() {
+        this.pause();
         if (Timer.timers.has(this.id)) {
             Timer.timers.delete(this.id);
-            TimerStorage.discard(this);
-
-            this.onStopped();
+            TimerStorage.discardTimer(this);
         }
+        this.onStopped();
     }
 }

@@ -5,17 +5,17 @@ class TimerStorage {
         };
     }
 
-    static store (timer) {
+    static storeTimer (timer) {
         localStorage.setItem(`timer.${timer.id}`, JSON.stringify({
             name: timer.name,
-            seconds: timer.seconds,
+            pastTime: timer.pastTime,
             paused: timer.paused,
             startDate: timer.startDate.getTime(),
-            lastDate: (new Date()).getTime()
+            lastRunDate: (timer.lastRunDate ? timer.lastRunDate.getTime() : null)
         }));
     }
 
-    static discard (timer) {
+    static discardTimer (timer) {
         localStorage.removeItem(`timer.${timer.id}`);
         localStorage.setItem(`log.${timer.id}`, JSON.stringify({
             name: timer.name,
@@ -30,13 +30,8 @@ class TimerStorage {
         return storedTimerKeys.map((key) => {
             const storedTimer = JSON.parse(localStorage.getItem(key));
 
-            if (!storedTimer.paused) {
-                const now = new Date();
-                storedTimer.seconds += Math.round(((new Date()).getTime() - storedTimer.lastDate)/1000);
-            };
-
             storedTimer.startDate = new Date(storedTimer.startDate);
-            storedTimer.lastDate = new Date(storedTimer.lastDate);
+            storedTimer.lastRunDate = (storedTimer.lastRunDate ? new Date(storedTimer.lastRunDate) : null);
 
             return storedTimer;
         }).sort((a, b) => a.startDate - b.startDate);
