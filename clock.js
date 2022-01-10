@@ -3,7 +3,7 @@ class Clock {
 
     static intervalId = setInterval(() => {
         Clock.listeners.forEach((cb) => cb());
-    }, 1000);
+    }, 30000);
 
     static subscribe (callback) {
         Clock.listeners.add(callback);
