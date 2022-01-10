@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshLogs = () => {
         logsContainer.innerHTML = '';
-        logs = TimerStorage.getLogs();
+        logs = Storage.getLogs();
         logs.forEach(({ startDate, stopDate, name, time }) => {
             const logElement = document.createElement('li');
             logElement.innerHTML = logTemplate.innerHTML
@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 name,
                 startDate,
                 lastRunDate,
-                paused,
                 pastTime,
                 onTick: (time) => {
                     timeLabel.textContent = timeToString(time);
@@ -65,6 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 onPaused: () => timerElement.classList.add('paused'),
                 onStopped: () => timerElement.remove()
             });
+
+            if (!paused) {
+                timer.run();
+            }
 
             resumeButton.addEventListener('click', (e) => {
                 clearErrorMessage();
@@ -90,15 +93,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const storedTimers = TimerStorage.getStoredTimers();
+    const storedTimers = Storage.getStoredTimers();
     storedTimers.forEach((st) => createTimer(st.name, st.startDate, st.lastRunDate, st.pastTime, st.paused));
 
     refreshLogs();
 
-    pauseOthersFlag.checked = TimerStorage.getConfig(TimerStorage.configNames.PAUSE_OTHERS) !== false;
+    pauseOthersFlag.checked = Storage.getConfig(Storage.configNames.PAUSE_OTHERS) !== false;
 
     pauseOthersFlag.addEventListener('change', () => {
-        TimerStorage.setConfig(TimerStorage.configNames.PAUSE_OTHERS, pauseOthersFlag.checked);
+        Storage.setConfig(Storage.configNames.PAUSE_OTHERS, pauseOthersFlag.checked);
     });
     timerCreate.addEventListener('click', () => {
         clearErrorMessage();
@@ -107,19 +110,19 @@ document.addEventListener('DOMContentLoaded', () => {
         nameInput.value = '';
 
         if (pauseOthersFlag.checked) {
-            Timer.pauseAll();
+            //TODO Timer.pauseAll();
         }
         createTimer(name);
     });
     pauseAllButton.addEventListener('click', () => {
-        Timer.pauseAll();
+        //TODO        Timer.pauseAll();
     });
     stopAllButton.addEventListener('click', () => {
-        Timer.stopAll();
+        //TODO Timer.stopAll();
         refreshLogs();
     });
     clearLogsButton.addEventListener('click', () => {
-        TimerStorage.clearLogs();
+        Storage.clearLogs();
         refreshLogs();
     });
 

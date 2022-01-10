@@ -1,4 +1,4 @@
-class TimerStorage {
+class Storage {
     static get configNames () {
         return {
             PAUSE_OTHERS: 'pauseOthers'
