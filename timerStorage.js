@@ -1,62 +1,57 @@
 class Storage {
-    static get configNames () {
+
+    static get TYPE_NAMES () {
         return {
-            PAUSE_OTHERS: 'pauseOthers'
-        };
+            TIMER: 'timer',
+            LOG: 'log',
+            CONFIG: 'config'
+        }
     }
 
-    static storeTimer (timer) {
-        localStorage.setItem(`timer.${timer.id}`, JSON.stringify({
-            name: timer.name,
-            pastTime: timer.pastTime,
-            paused: timer.paused,
-            startDate: timer.startDate.getTime(),
-            lastRunDate: (timer.lastRunDate ? timer.lastRunDate.getTime() : null)
-        }));
+    static exists (type, id) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        return !!localStorage.getItem(`${type}.${id}`);
     }
 
-    static discardTimer (timer) {
-        localStorage.removeItem(`timer.${timer.id}`);
-        localStorage.setItem(`log.${timer.id}`, JSON.stringify({
-            name: timer.name,
-            startDate: timer.startDate.getTime(),
-            time: timer.time,
-            stopDate: (new Date).getTime()
-        }));
+    static save (type, id, value) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        localStorage.setItem(`${type}.${id}`, JSON.stringify(value));
     }
 
-    static getStoredTimers () {
-        const storedTimerKeys = Object.keys(localStorage).filter((k) => k.startsWith('timer.'));
-        return storedTimerKeys.map((key) => {
-            const storedTimer = JSON.parse(localStorage.getItem(key));
-
-            storedTimer.startDate = new Date(storedTimer.startDate);
-            storedTimer.lastRunDate = (storedTimer.lastRunDate ? new Date(storedTimer.lastRunDate) : null);
-
-            return storedTimer;
-        }).sort((a, b) => a.startDate - b.startDate);
+    static get (type, id) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        return JSON.parse(localStorage.getItem(`${type}.${id}`));
     }
 
-    static getLogs() {
-        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith('log.'));
-        return logKeys.map((key) => {
-            const log = JSON.parse(localStorage.getItem(key));
-            log.startDate = new Date(log.startDate);
-            log.stopDate = new Date(log.stopDate);
-            return log;
-        }).sort((a, b) => a.stopDate - b.stopDate);
+    static remove (type, id) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        if (!Storage.exists(type, id)) {
+            throw new Error('Storage record does not exists');
+        }
+        localStorage.removeItem(`${type}.${id}`);
     }
 
-    static clearLogs() {
-        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith('log.'));
-        logKeys.forEach((key) => localStorage.removeItem(key));
+    static getAll (type) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith(type));
+        return logKeys.map((key) => JSON.parse(localStorage.getItem(key)));
     }
     
-    static getConfig(name) {
-        return JSON.parse(localStorage.getItem(`config.${name}`));
-    }
-
-    static setConfig(name, value) {
-        return localStorage.setItem(`config.${name}`, value);
+    static removeAll (type) {
+        if (!Object.values(Storage.TYPE_NAMES).includes(type)) {
+            throw new Error('Unexpected storage record type');
+        }
+        const logKeys = Object.keys(localStorage).filter((k) => k.startsWith(type));
+        logKeys.forEach((key) => localStorage.removeItem(key));
     }
 }

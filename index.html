@@ -22,17 +22,17 @@
 
             <ul id="timers"></ul>
 
+            <button id="clearLogs">Clear logs</button>
             <ul id="logs"></ul>
 
             <template id="timerTemplate">
                 <span class="name">${timerName}</span>
-                <span class="time"></span>
+                <span class="time">${time}</span>
                 <button class="resume">Resume</button>
                 <button class="pause">Pause</button>
                 <button class="stop">Stop</button>
             </template>
 
-            <button id="clearLogs">Clear logs</button>
             <template id="logTemplate">
                 <span class="startDate">${startDate}</span>
                 <span class="stopDate">${stopDate}</span>

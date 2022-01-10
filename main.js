@@ -1,7 +1,3 @@
-const timeToString = (time = 0) => {
-    return `${time / 3600 >> 0}h ${time % 3600 / 60 >> 0}m ${time % 3600 % 60}s`
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('newTimerName');
     const timersContainer = document.getElementById('timers');
@@ -22,108 +18,108 @@ document.addEventListener('DOMContentLoaded', () => {
         clearErrorMessage();
         errorMessage.textContent = message;
     };
-
+    const timeToString = (time = 0) => {
+        return `${time / 3600 >> 0}h ${time % 3600 / 60 >> 0}m ${time % 3600 % 60}s`
+    };
     const refreshLogs = () => {
         logsContainer.innerHTML = '';
-        logs = Storage.getLogs();
-        logs.forEach(({ startDate, stopDate, name, time }) => {
-            const logElement = document.createElement('li');
-            logElement.innerHTML = logTemplate.innerHTML
-                .replace('${startDate}', startDate.toLocaleString())
-                .replace('${stopDate}', stopDate.toLocaleString())
-                .replace('${name}', name)
-                .replace('${time}', timeToString(time));
-            logsContainer.prepend(logElement);
-        });
+        Storage.getAll(Storage.TYPE_NAMES.LOG)
+            .sort((a, b) => a.stopDate - b.stopDate)
+            .forEach(({ name, startDate, stopDate, time }) => {
+                const logElement = document.createElement('li');
+                logElement.innerHTML = logTemplate.innerHTML
+                    .replace('${startDate}', (new Date(startDate)).toLocaleString())
+                    .replace('${stopDate}', (new Date(stopDate)).toLocaleString())
+                    .replace('${name}', name)
+                    .replace('${time}', timeToString(time));
+                logsContainer.prepend(logElement);
+            });
     };
-
-    const createTimer = (name, startDate, lastRunDate, pastTime, paused = false) => {
+    const renderTimer = (timer) => {
         const timerElement = document.createElement('li');
-        if (paused) timerElement.classList.add('paused');
-        timerElement.innerHTML = timerTemplate.innerHTML.replace('${timerName}', name);
-
-        const timeLabel = timerElement.querySelector('span.time');
-        const resumeButton = timerElement.querySelector('button.resume');
-        const pauseButton = timerElement.querySelector('button.pause');
-        const stopButton = timerElement.querySelector('button.stop');
-
-        timeLabel.textContent = timeToString(pastTime);
-
+        timerElement.innerHTML = timerTemplate.innerHTML
+            .replace('${timerName}', timer.name)
+            .replace('${time}', timeToString(timer.time));
+        if (timer.paused) {
+            timerElement.classList.add('paused');
+        }
         timersContainer.prepend(timerElement);
 
-        try {
-            const timer = new Timer({
-                name,
-                startDate,
-                lastRunDate,
-                pastTime,
-                onTick: (time) => {
-                    timeLabel.textContent = timeToString(time);
-                },
-                onRunning: () => timerElement.classList.remove('paused'),
-                onPaused: () => timerElement.classList.add('paused'),
-                onStopped: () => timerElement.remove()
-            });
+        const timeLabel = timerElement.querySelector('span.time');
+        const tick = () => timeLabel.textContent = timeToString(timer.time);
+        Clock.subscribe(tick);
 
-            if (!paused) {
-                timer.run();
-            }
+        timerElement.querySelector('button.resume').addEventListener('click', (e) => {
+            clearErrorMessage();
+            timer.run();
+            timerElement.classList.remove('paused');
+        });
+        timerElement.querySelector('button.pause').addEventListener('click', (e) => {
+            clearErrorMessage();
+            timer.pause();
+            timerElement.classList.add('paused');
+        });
+        timerElement.querySelector('button.stop').addEventListener('click', (e) => {
+            clearErrorMessage();
 
-            resumeButton.addEventListener('click', (e) => {
-                clearErrorMessage();
-                timer.run();
-            });
-            pauseButton.addEventListener('click', (e) => {
-                clearErrorMessage();
-                timer.pause();
-            });
-            stopButton.addEventListener('click', (e) => {
-                clearErrorMessage();
-                timer.stop();
-                refreshLogs();
-            });
+            timer.stop();
+            Clock.unsubscribe(tick);
 
-        } catch (error) {
-            if (error instanceof TimerError) {
-                showErrorMessage(error.message);
-                timerElement.remove();
-            } else {
-                throw error;
-            }
+            timerElement.remove();
+            refreshLogs();
+        });
+    }
+    
+    pauseOthersFlag.checked = Storage.get(Storage.TYPE_NAMES.CONFIG, 'pauseOthers') !== false;
+    pauseOthersFlag.addEventListener('change', () => {
+        Storage.save(Storage.TYPE_NAMES.CONFIG, 'pauseOthers', pauseOthersFlag.checked);
+    });
+
+    const timers = Timer.restore();
+    timers.forEach(renderTimer);
+    const pauseAll = () => {
+        timers.forEach((t) => t.pause());
+        const children = timersContainer.childNodes;
+        for (var i = 0; i < children.length; ++i) {
+            children[i].classList.add('paused');
         }
     };
-
-    const storedTimers = Storage.getStoredTimers();
-    storedTimers.forEach((st) => createTimer(st.name, st.startDate, st.lastRunDate, st.pastTime, st.paused));
-
-    refreshLogs();
-
-    pauseOthersFlag.checked = Storage.getConfig(Storage.configNames.PAUSE_OTHERS) !== false;
-
-    pauseOthersFlag.addEventListener('change', () => {
-        Storage.setConfig(Storage.configNames.PAUSE_OTHERS, pauseOthersFlag.checked);
-    });
     timerCreate.addEventListener('click', () => {
         clearErrorMessage();
 
         const name = nameInput.value;
         nameInput.value = '';
 
-        if (pauseOthersFlag.checked) {
-            //TODO Timer.pauseAll();
+        try {
+            const timer = new Timer({ name });
+            if (pauseOthersFlag.checked) {
+                pauseAll();
+            }
+            timer.run();
+            renderTimer(timer);
+
+            timers.push(timer);
+        } catch (error) {
+            if (error instanceof TimerError) {
+                showErrorMessage(error.message);
+            } else {
+                throw error;
+            }
         }
-        createTimer(name);
+
     });
-    pauseAllButton.addEventListener('click', () => {
-        //TODO        Timer.pauseAll();
-    });
+    pauseAllButton.addEventListener('click', pauseAll);
     stopAllButton.addEventListener('click', () => {
-        //TODO Timer.stopAll();
-        refreshLogs();
-    });
-    clearLogsButton.addEventListener('click', () => {
-        Storage.clearLogs();
+        timers.forEach((t) => t.stop());
+        while (timersContainer.firstChild) {
+            timersContainer.removeChild(timersContainer.firstChild);
+        }
         refreshLogs();
     });
 
+    refreshLogs();
+    clearLogsButton.addEventListener('click', () => {
+        Storage.removeAll(Storage.TYPE_NAMES.LOG);
+        refreshLogs();
+    });
 });

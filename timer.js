@@ -8,32 +8,17 @@ class Timer {
     constructor({
         name,
         startDate = new Date(),
-        lastRunDate = null,
-        pastTime = 0,
-        paused = true,
-        onTick, onRunning, onPaused, onStopped
+        pastTime = 0
     }) {
         if (!name) throw new TimerError('Timer name required.');
-        //TODO throw new TimerError('Same timer already exists.');
 
-        this.startDate = startDate;
-        this.lastRunDate = lastRunDate;
         this.name = name;
+        this.startDate = startDate;
+        this.lastRunDate = null;
         this.pastTime = pastTime;
-        this.paused = paused;
+        this.paused = true;
 
-        this.onTick = onTick;
-        this.onRunning = onRunning;
-        this.onPaused = onPaused;
-        this.onStopped = onStopped;
-
-        this.clockHandler = () => {
-            if (!this.paused) {
-                this.onTick(this.time);
-            }
-        };
-        Clock.subscribe(this.clockHandler);
-        Storage.storeTimer(this);
+        this.store();
     }
 
     get id () {
@@ -50,11 +35,10 @@ class Timer {
 
     run () {
         if (this.paused) {
-            this.lastRunDate = new Date(); //fail when restore
+            this.lastRunDate = new Date();
             this.paused = false;
-            Storage.storeTimer(this);
+            this.store();
         }
-        this.onRunning();
     }
 
     pause () {
@@ -62,15 +46,48 @@ class Timer {
             this.pastTime = this.time;
             this.lastRunDate = null;
             this.paused = true;
-            Storage.storeTimer(this);
+            this.store();
         }
-        this.onPaused();
     }
 
     stop () {
         this.pause();
-        Clock.unsubscribe(this.clockHandler);
-        Storage.discardTimer(this);
-        this.onStopped();
+
+        Storage.save(Storage.TYPE_NAMES.LOG, this.id, {
+            name: this.name,
+            startDate: this.startDate.getTime(),
+            stopDate: (new Date).getTime(),
+            time: this.time
+        });
+        Storage.remove(Storage.TYPE_NAMES.TIMER, this.id);
+    }
+
+    store () {
+        Storage.save(Storage.TYPE_NAMES.TIMER, this.id, {
+            name: this.name,
+            startDate: this.startDate.getTime(),
+            ...(!this.paused ? { lastRunDate: this.lastRunDate.getTime() } : {}),
+            pastTime: this.pastTime,
+            paused: this.paused
+        });
+    }
+
+    static restore () {
+        return Storage.getAll(Storage.TYPE_NAMES.TIMER)
+            .sort((a, b) => a.startDate - b.startDate)
+            .map(({ name, startDate, lastRunDate, pastTime, paused }) => {
+                if (!paused) {
+                    pastTime += Math.round(((new Date()) - lastRunDate)/1000);
+                }
+                const timer = new Timer({
+                    name,
+                    startDate: new Date(startDate),
+                    pastTime
+                });
+                if (!paused) {
+                    timer.run();
+                }
+                return timer;
+            });
     }
 }
